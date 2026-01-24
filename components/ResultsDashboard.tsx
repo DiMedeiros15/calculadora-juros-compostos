@@ -3,8 +3,6 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell 
 } from 'recharts';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 import { CalculationResult, SummaryData, SimulationParams } from '../types';
 import { formatCurrency } from '../utils';
 
@@ -17,7 +15,6 @@ interface Props {
 
 const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params }) => {
   const [activeTab, setActiveTab] = useState<'growth' | 'distribution'>('growth');
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const pieData = [
     { name: 'Valor Investido', value: summary.totalInvested },
@@ -30,94 +27,12 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
 
   const barData = results.filter((_, i) => i % Math.max(1, Math.floor(results.length / 20)) === 0 || i === results.length - 1);
 
-  const handleExportPDF = () => {
-    setIsGeneratingPDF(true);
-    try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.getWidth();
-      doc.setFontSize(22);
-      doc.setTextColor(153, 27, 27);
-      doc.text('InvestSmart', 20, 20);
-      doc.setFontSize(14);
-      doc.setTextColor(100, 116, 139);
-      doc.text('Relatório de Simulação de Juros Compostos', 20, 28);
-      doc.setDrawColor(226, 232, 240);
-      doc.line(20, 35, pageWidth - 20, 35);
-
-      doc.setFontSize(12);
-      doc.setTextColor(30, 41, 59);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Parâmetros da Simulação:', 20, 45);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(71, 85, 105);
-      const paramsList = [
-        `Valor Inicial: ${formatCurrency(params.initialValue)}`,
-        `Valor Mensal: ${formatCurrency(params.monthlyValue)}`,
-        `Taxa de Juros: ${params.interestRate}% (${params.rateType === 'annual' ? 'Anual' : 'Mensal'})`,
-        `Período: ${params.period} ${params.periodType === 'years' ? 'anos' : 'meses'}`
-      ];
-      doc.text(paramsList, 25, 52);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 41, 59);
-      doc.text('Resumo dos Resultados:', 20, 85);
-      const summaryRows = [
-        ['Total Final Acumulado', formatCurrency(summary.totalFinal)],
-        ['Total Investido', formatCurrency(summary.totalInvested)],
-        ['Total Ganho em Juros', formatCurrency(summary.totalInterest)]
-      ];
-      (doc as any).autoTable({
-        startY: 90,
-        margin: { left: 20 },
-        tableWidth: 100,
-        head: [['Métrica', 'Valor']],
-        body: summaryRows,
-        theme: 'grid',
-        headStyles: { fillColor: [153, 27, 27], textColor: [255, 255, 255] },
-        styles: { font: 'helvetica', fontSize: 10 }
-      });
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('Detalhamento Mensal:', 20, (doc as any).lastAutoTable.finalY + 15);
-      const tableData = results.map(row => [
-        row.month.toString(),
-        formatCurrency(row.interest),
-        formatCurrency(row.totalInvested),
-        formatCurrency(row.totalInterest),
-        formatCurrency(row.totalAccumulated)
-      ]);
-      (doc as any).autoTable({
-        startY: (doc as any).lastAutoTable.finalY + 20,
-        head: [['Mês', 'Juros', 'Total Investido', 'Total Juros', 'Total Acumulado']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: { fillColor: [30, 41, 59] },
-        styles: { fontSize: 8 },
-        alternateRowStyles: { fillColor: [248, 250, 252] }
-      });
-
-      doc.save(`investsmart-simulacao-${new Date().getTime()}.pdf`);
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-  };
-
   return (
     <div className="mt-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center no-print">
         <h2 className="text-2xl font-bold text-red-800 dark:text-red-600">Resultado</h2>
-        <button
-          onClick={handleExportPDF}
-          disabled={isGeneratingPDF}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-sm font-bold rounded-lg transition-all shadow-sm"
-        >
-          {isGeneratingPDF ? 'Gerando...' : 'Exportar PDF'}
-        </button>
       </div>
       
-      {/* Cartões de Resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-red-800 dark:bg-red-900 p-6 rounded-xl text-white shadow-lg transform hover:scale-[1.01] transition-transform">
           <p className="text-xs uppercase tracking-wider font-semibold opacity-80">Valor total final</p>
@@ -133,7 +48,6 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
         </div>
       </div>
 
-      {/* Gráfico de Evolução com fundo branco no modo claro */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 no-print">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
           <h3 className="text-lg font-bold text-black dark:text-white">Gráfico de Evolução</h3>
@@ -233,7 +147,6 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
         </div>
       </div>
 
-      {/* Tabela com juros em verde */}
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 no-print">
           <h3 className="text-lg font-bold text-black dark:text-white">Detalhamento Mensal</h3>
