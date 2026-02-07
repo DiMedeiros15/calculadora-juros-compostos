@@ -5,6 +5,10 @@ export interface CalculationResult {
   totalInvested: number;
   totalInterest: number;
   totalAccumulated: number;
+  taxPaid: number;
+  taxBase: number;
+  taxRate: number;
+  netAccumulated: number;
 }
 
 export interface SimulationParams {
@@ -20,4 +24,6 @@ export interface SummaryData {
   totalFinal: number;
   totalInvested: number;
   totalInterest: number;
+  totalTax: number;
+  netTotal: number;
 }

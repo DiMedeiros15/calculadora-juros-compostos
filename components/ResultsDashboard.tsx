@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
@@ -15,42 +16,56 @@ interface Props {
 
 const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params }) => {
   const [activeTab, setActiveTab] = useState<'growth' | 'distribution'>('growth');
+  const [showTaxTable, setShowTaxTable] = useState(false);
 
   const pieData = [
     { name: 'Valor Investido', value: summary.totalInvested },
-    { name: 'Total em Juros', value: summary.totalInterest },
+    { name: 'Lucro Líquido', value: summary.totalInterest - summary.totalTax },
+    { name: 'Imposto (IR)', value: summary.totalTax },
   ];
 
-  const ACCENT_COLORS = ['#991b1b', darkMode ? '#334155' : '#1e293b']; 
+  const ACCENT_COLORS = ['#1e293b', '#10b981', '#f59e0b']; 
   const GRID_COLOR = darkMode ? '#1e293b' : '#f1f5f9';
   const TEXT_COLOR = darkMode ? '#94a3b8' : '#64748b';
 
+  // Filtra dados para não poluir o gráfico de barras se houver muitos meses
   const barData = results.filter((_, i) => i % Math.max(1, Math.floor(results.length / 20)) === 0 || i === results.length - 1);
 
   return (
     <div className="mt-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex justify-between items-center no-print">
-        <h2 className="text-2xl font-bold text-red-800 dark:text-red-600">Resultado</h2>
+        <h2 className="text-2xl font-bold text-red-800 dark:text-red-600">Resumo da Simulação</h2>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-red-800 dark:bg-red-900 p-6 rounded-xl text-white shadow-lg transform hover:scale-[1.01] transition-transform">
-          <p className="text-xs uppercase tracking-wider font-semibold opacity-80">Valor total final</p>
-          <p className="text-2xl font-bold mt-1">{formatCurrency(summary.totalFinal)}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-red-800 dark:bg-red-900 p-5 rounded-xl text-white shadow-lg transform hover:scale-[1.02] transition-all border border-transparent dark:border-red-800">
+          <p className="text-[10px] uppercase tracking-widest font-bold opacity-80 mb-1">Valor Líquido Final</p>
+          <p className="text-2xl font-bold truncate">{formatCurrency(summary.netTotal)}</p>
+          <p className="text-[10px] mt-2 opacity-70">Já descontado o IR</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm transform hover:scale-[1.01] transition-transform">
-          <p className="text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Valor total investido</p>
-          <p className="text-2xl font-bold mt-1 text-red-700 dark:text-red-500">{formatCurrency(summary.totalInvested)}</p>
+        
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-xl shadow-sm transform hover:scale-[1.02] transition-all">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400 mb-1">Total Bruto</p>
+          <p className="text-2xl font-bold truncate text-slate-800 dark:text-white">{formatCurrency(summary.totalFinal)}</p>
+          <p className="text-[10px] mt-2 text-slate-400">Sem descontar impostos</p>
         </div>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-xl shadow-sm transform hover:scale-[1.01] transition-transform">
-          <p className="text-xs uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400">Total em juros</p>
-          <p className="text-2xl font-bold mt-1 text-slate-800 dark:text-white">{formatCurrency(summary.totalInterest)}</p>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-xl shadow-sm transform hover:scale-[1.02] transition-all">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400 mb-1">Juros Brutos</p>
+          <p className="text-2xl font-bold truncate text-red-700 dark:text-red-500">{formatCurrency(summary.totalInterest)}</p>
+          <p className="text-[10px] mt-2 text-slate-400">Rendimento total do período</p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-xl shadow-sm transform hover:scale-[1.02] transition-all">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400 mb-1">Imposto Aplicado (IR)</p>
+          <p className="text-2xl font-bold truncate text-orange-600 dark:text-orange-500">{formatCurrency(summary.totalTax)}</p>
+          <p className="text-[10px] mt-2 text-slate-400">Alíquota de {results[results.length-1]?.taxRate}%</p>
         </div>
       </div>
 
       <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 no-print">
         <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
-          <h3 className="text-lg font-bold text-black dark:text-white">Gráfico de Evolução</h3>
+          <h3 className="text-lg font-bold text-black dark:text-white">Análise Gráfica</h3>
           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
             <button 
               onClick={() => setActiveTab('growth')}
@@ -87,7 +102,7 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
                     border: 'none', 
                     backgroundColor: darkMode ? '#0f172a' : '#ffffff', 
                     color: darkMode ? '#f1f5f9' : '#1e293b',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
                   }}
                   itemStyle={{ color: darkMode ? '#f1f5f9' : '#1e293b' }}
                 />
@@ -95,24 +110,21 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
                 <Area 
                   type="monotone" 
                   dataKey="totalAccumulated" 
-                  name="Total Acumulado" 
+                  name="Montante Bruto" 
                   stroke="#991b1b" 
                   strokeWidth={3} 
                   fillOpacity={1} 
                   fill="url(#colorAcc)" 
-                  dot={{ r: 3, strokeWidth: 1, fill: '#991b1b' }}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
+                  dot={false}
                 />
                 <Area 
                   type="monotone" 
-                  dataKey="totalInvested" 
-                  name="Valor Investido" 
-                  stroke={darkMode ? '#475569' : '#1e293b'} 
-                  strokeWidth={3} 
-                  fill={darkMode ? '#334155' : '#e2e8f0'} 
-                  fillOpacity={0.3} 
-                  dot={{ r: 3, strokeWidth: 1, fill: darkMode ? '#475569' : '#1e293b' }}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
+                  dataKey="netAccumulated" 
+                  name="Montante Líquido" 
+                  stroke="#10b981" 
+                  strokeWidth={2} 
+                  fill="transparent" 
+                  strokeDasharray="5 5"
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -124,7 +136,7 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
                     <Pie data={pieData} cx="50%" cy="50%" innerRadius={80} outerRadius={120} paddingAngle={5} dataKey="value">
                       {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={ACCENT_COLORS[index]} stroke="transparent" />)}
                     </Pie>
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: darkMode ? '#0f172a' : '#ffffff', borderRadius: '8px', border: 'none' }} />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: darkMode ? '#0f172a' : '#ffffff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
@@ -135,10 +147,10 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={GRID_COLOR} />
                     <XAxis dataKey="month" fontSize={12} stroke={TEXT_COLOR} />
                     <YAxis tickFormatter={(val) => `R$ ${val/1000}k`} fontSize={12} stroke={TEXT_COLOR} />
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: darkMode ? '#0f172a' : '#ffffff', borderRadius: '8px', border: 'none' }} />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: darkMode ? '#0f172a' : '#ffffff', borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                     <Legend />
-                    <Bar dataKey="totalInvested" name="Valor Investido" stackId="a" fill={darkMode ? '#334155' : '#1e293b'} />
-                    <Bar dataKey="totalInterest" name="Valor em Juros" stackId="a" fill="#991b1b" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="totalInvested" name="Investido" stackId="a" fill="#1e293b" />
+                    <Bar dataKey="totalInterest" name="Juros Brutos" stackId="a" fill="#991b1b" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -148,28 +160,62 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 no-print">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 no-print flex flex-col sm:flex-row justify-between items-center gap-4">
           <h3 className="text-lg font-bold text-black dark:text-white">Detalhamento Mensal</h3>
+          <button 
+            onClick={() => setShowTaxTable(!showTaxTable)}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-bold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-400 transition-all border border-slate-200 dark:border-slate-700 shadow-sm"
+          >
+            <svg className={`w-4 h-4 transition-transform ${showTaxTable ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            {showTaxTable ? 'Ocultar Tabela de Impostos' : 'Mostrar Tabela de Impostos'}
+          </button>
         </div>
         <div className="overflow-x-auto max-h-[500px] overflow-y-auto custom-scrollbar">
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-center">
             <thead className="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10">
-              <tr>
-                <th className="px-6 py-4 text-sm font-bold text-slate-700 dark:text-slate-300">Mês</th>
-                <th className="px-6 py-4 text-sm font-bold text-slate-700 dark:text-slate-300">Juros</th>
-                <th className="px-6 py-4 text-sm font-bold text-slate-700 dark:text-slate-300">Total Investido</th>
-                <th className="px-6 py-4 text-sm font-bold text-slate-700 dark:text-slate-300">Total Juros</th>
-                <th className="px-6 py-4 text-sm font-bold text-slate-700 dark:text-slate-300">Total Acumulado</th>
-              </tr>
+              {showTaxTable ? (
+                <tr>
+                  <th className="px-6 py-4 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Mês</th>
+                  <th className="px-6 py-4 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Base de Cálculo (Lucro)</th>
+                  <th className="px-6 py-4 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Alíquota IR</th>
+                  <th className="px-6 py-4 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Imposto Provisionado</th>
+                  <th className="px-6 py-4 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Líquido para Saque</th>
+                </tr>
+              ) : (
+                <tr>
+                  <th className="px-6 py-4 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Mês</th>
+                  <th className="px-6 py-4 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Juros (Mês)</th>
+                  <th className="px-6 py-4 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Capital Investido</th>
+                  <th className="px-6 py-4 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Juros Acumulados</th>
+                  <th className="px-6 py-4 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Total Bruto</th>
+                </tr>
+              )}
             </thead>
             <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
               {results.map((row) => (
                 <tr key={row.month} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">{row.month}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-500 font-medium">+{formatCurrency(row.interest)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{formatCurrency(row.totalInvested)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{formatCurrency(row.totalInterest)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(row.totalAccumulated)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white font-medium">{row.month}</td>
+                  {showTaxTable ? (
+                    <>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{formatCurrency(row.taxBase)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className="px-2 py-1 rounded-md bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 text-xs font-bold">
+                          {row.taxRate.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600 dark:text-orange-500 font-bold">-{formatCurrency(row.taxPaid)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-green-600 dark:text-green-500">{formatCurrency(row.netAccumulated)}</td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 dark:text-green-500 font-semibold">+{formatCurrency(row.interest)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{formatCurrency(row.totalInvested)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">{formatCurrency(row.totalInterest)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(row.totalAccumulated)}</td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
