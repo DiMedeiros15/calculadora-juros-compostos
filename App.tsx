@@ -76,10 +76,10 @@ const App: React.FC = () => {
   return (
     <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-slate-950' : 'bg-white'}`}>
       <div className="py-8 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
-        <header className="mb-10 flex flex-col items-center relative no-print">
+        <header className="mb-10 flex flex-col items-center relative">
           <button 
             onClick={() => setDarkMode(!darkMode)}
-            className="absolute right-0 top-0 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:ring-2 ring-red-500 transition-all shadow-sm group"
+            className="absolute right-0 top-0 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:ring-2 ring-red-500 transition-all shadow-sm group no-print"
             aria-label="Toggle Dark Mode"
           >
             {darkMode ? (

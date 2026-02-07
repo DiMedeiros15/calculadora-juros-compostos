@@ -4,6 +4,8 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell 
 } from 'recharts';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import { CalculationResult, SummaryData, SimulationParams } from '../types';
 import { formatCurrency } from '../utils';
 
@@ -28,13 +30,141 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
   const GRID_COLOR = darkMode ? '#1e293b' : '#f1f5f9';
   const TEXT_COLOR = darkMode ? '#94a3b8' : '#64748b';
 
-  // Filtra dados para não poluir o gráfico de barras se houver muitos meses
   const barData = results.filter((_, i) => i % Math.max(1, Math.floor(results.length / 20)) === 0 || i === results.length - 1);
+
+  const handleExportCSV = () => {
+    const headers = [
+      'Mês',
+      'Juros do Mês (R$)',
+      'Capital Investido (R$)',
+      'Juros Acumulados (R$)',
+      'Total Bruto (R$)',
+      'Base de Cálculo IR (R$)',
+      'Alíquota IR (%)',
+      'Imposto Provisionado (R$)',
+      'Total Líquido (R$)'
+    ];
+
+    const rows = results.map(row => [
+      row.month,
+      row.interest.toFixed(2).replace('.', ','),
+      row.totalInvested.toFixed(2).replace('.', ','),
+      row.totalInterest.toFixed(2).replace('.', ','),
+      row.totalAccumulated.toFixed(2).replace('.', ','),
+      row.taxBase.toFixed(2).replace('.', ','),
+      row.taxRate.toFixed(1).replace('.', ','),
+      row.taxPaid.toFixed(2).replace('.', ','),
+      row.netAccumulated.toFixed(2).replace('.', ',')
+    ]);
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(e => e.join(';'))
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `invest-smart-simulacao-${new Date().getTime()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    const timestamp = new Date().toLocaleDateString('pt-BR');
+
+    // Cabeçalho
+    doc.setFontSize(22);
+    doc.setTextColor(153, 27, 27); // Vermelho escuro
+    doc.text('InvestSmart', 14, 20);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139);
+    doc.text('RELATÓRIO DE SIMULAÇÃO DE JUROS COMPOSTOS', 14, 28);
+    doc.text(`Data: ${timestamp}`, 160, 20);
+
+    // Resumo dos Dados
+    doc.setDrawColor(226, 232, 240);
+    doc.line(14, 35, 196, 35);
+
+    doc.setFontSize(12);
+    doc.setTextColor(30, 41, 59);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Resumo da Projeção', 14, 45);
+
+    const summaryItems = [
+      ['Total Investido:', formatCurrency(summary.totalInvested)],
+      ['Juros Brutos:', formatCurrency(summary.totalInterest)],
+      ['Imposto de Renda (IR):', formatCurrency(summary.totalTax)],
+      ['Valor Líquido Final:', formatCurrency(summary.netTotal)]
+    ];
+
+    let yPos = 55;
+    summaryItems.forEach(([label, value]) => {
+      doc.setFont('helvetica', 'normal');
+      doc.text(label, 14, yPos);
+      doc.setFont('helvetica', 'bold');
+      doc.text(value, 80, yPos);
+      yPos += 8;
+    });
+
+    // Tabela de Dados
+    const tableHeaders = [['Mês', 'Investido', 'Juros (Mês)', 'Juros Acum.', 'Total Bruto', 'IR Devido', 'Total Líquido']];
+    const tableData = results.map(r => [
+      r.month.toString(),
+      formatCurrency(r.totalInvested),
+      formatCurrency(r.interest),
+      formatCurrency(r.totalInterest),
+      formatCurrency(r.totalAccumulated),
+      formatCurrency(r.taxPaid),
+      formatCurrency(r.netAccumulated)
+    ]);
+
+    (doc as any).autoTable({
+      startY: yPos + 10,
+      head: tableHeaders,
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [153, 27, 27], fontSize: 8 },
+      styles: { fontSize: 7, halign: 'center' },
+      columnStyles: {
+        0: { cellWidth: 10 },
+        4: { fontStyle: 'bold' },
+        6: { fontStyle: 'bold', textColor: [16, 185, 129] }
+      }
+    });
+
+    doc.save(`InvestSmart-Simulacao-${new Date().getTime()}.pdf`);
+  };
 
   return (
     <div className="mt-10 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex justify-between items-center no-print">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <h2 className="text-2xl font-bold text-red-800 dark:text-red-600">Resumo da Simulação</h2>
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <button 
+            onClick={handleExportPDF}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-red-500 dark:hover:border-red-700 hover:text-red-700 dark:hover:text-red-500 transition-all shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Exportar PDF
+          </button>
+          <button 
+            onClick={handleExportCSV}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold rounded-xl bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-red-500 dark:hover:border-red-700 hover:text-red-700 dark:hover:text-red-500 transition-all shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Exportar CSV
+          </button>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -159,7 +289,7 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden print:border-none print:shadow-none">
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 no-print flex flex-col sm:flex-row justify-between items-center gap-4">
           <h3 className="text-lg font-bold text-black dark:text-white">Detalhamento Mensal</h3>
           <button 
@@ -172,9 +302,9 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
             {showTaxTable ? 'Ocultar Tabela de Impostos' : 'Mostrar Tabela de Impostos'}
           </button>
         </div>
-        <div className="overflow-x-auto max-h-[500px] overflow-y-auto custom-scrollbar">
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto custom-scrollbar print:max-h-none print:overflow-visible">
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-center">
-            <thead className="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10">
+            <thead className="bg-slate-100 dark:bg-slate-800/80 sticky top-0 z-10 print:static">
               {showTaxTable ? (
                 <tr>
                   <th className="px-6 py-4 text-[11px] uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400">Mês</th>
