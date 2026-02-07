@@ -5,7 +5,7 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell 
 } from 'recharts';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { CalculationResult, SummaryData, SimulationParams } from '../types';
 import { formatCurrency } from '../utils';
 
@@ -74,71 +74,76 @@ const ResultsDashboard: React.FC<Props> = ({ results, summary, darkMode, params 
   };
 
   const handleExportPDF = () => {
-    const doc = new jsPDF();
-    const timestamp = new Date().toLocaleDateString('pt-BR');
+    try {
+      const doc = new jsPDF();
+      const timestamp = new Date().toLocaleDateString('pt-BR');
 
-    // Cabeçalho
-    doc.setFontSize(22);
-    doc.setTextColor(153, 27, 27); // Vermelho escuro
-    doc.text('InvestSmart', 14, 20);
-    
-    doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139);
-    doc.text('RELATÓRIO DE SIMULAÇÃO DE JUROS COMPOSTOS', 14, 28);
-    doc.text(`Data: ${timestamp}`, 160, 20);
+      // Cabeçalho
+      doc.setFontSize(22);
+      doc.setTextColor(153, 27, 27); // Vermelho escuro
+      doc.text('InvestSmart', 14, 20);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.text('RELATÓRIO DE SIMULAÇÃO DE JUROS COMPOSTOS', 14, 28);
+      doc.text(`Data: ${timestamp}`, 160, 20);
 
-    // Resumo dos Dados
-    doc.setDrawColor(226, 232, 240);
-    doc.line(14, 35, 196, 35);
+      // Resumo dos Dados
+      doc.setDrawColor(226, 232, 240);
+      doc.line(14, 35, 196, 35);
 
-    doc.setFontSize(12);
-    doc.setTextColor(30, 41, 59);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Resumo da Projeção', 14, 45);
-
-    const summaryItems = [
-      ['Total Investido:', formatCurrency(summary.totalInvested)],
-      ['Juros Brutos:', formatCurrency(summary.totalInterest)],
-      ['Imposto de Renda (IR):', formatCurrency(summary.totalTax)],
-      ['Valor Líquido Final:', formatCurrency(summary.netTotal)]
-    ];
-
-    let yPos = 55;
-    summaryItems.forEach(([label, value]) => {
-      doc.setFont('helvetica', 'normal');
-      doc.text(label, 14, yPos);
+      doc.setFontSize(12);
+      doc.setTextColor(30, 41, 59);
       doc.setFont('helvetica', 'bold');
-      doc.text(value, 80, yPos);
-      yPos += 8;
-    });
+      doc.text('Resumo da Projeção', 14, 45);
 
-    // Tabela de Dados
-    const tableHeaders = [['Mês', 'Investido', 'Juros (Mês)', 'Juros Acum.', 'Total Bruto', 'IR Devido', 'Total Líquido']];
-    const tableData = results.map(r => [
-      r.month.toString(),
-      formatCurrency(r.totalInvested),
-      formatCurrency(r.interest),
-      formatCurrency(r.totalInterest),
-      formatCurrency(r.totalAccumulated),
-      formatCurrency(r.taxPaid),
-      formatCurrency(r.netAccumulated)
-    ]);
+      const summaryItems = [
+        ['Total Investido:', formatCurrency(summary.totalInvested)],
+        ['Juros Brutos:', formatCurrency(summary.totalInterest)],
+        ['Imposto de Renda (IR):', formatCurrency(summary.totalTax)],
+        ['Valor Líquido Final:', formatCurrency(summary.netTotal)]
+      ];
 
-    (doc as any).autoTable({
-      startY: yPos + 10,
-      head: tableHeaders,
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: [153, 27, 27], fontSize: 8 },
-      styles: { fontSize: 7, halign: 'center' },
-      columnStyles: {
-        0: { cellWidth: 10 },
-        4: { fontStyle: 'bold' },
-        6: { fontStyle: 'bold', textColor: [16, 185, 129] }
-      }
-    });
+      let yPos = 55;
+      summaryItems.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'normal');
+        doc.text(label, 14, yPos);
+        doc.setFont('helvetica', 'bold');
+        doc.text(value, 80, yPos);
+        yPos += 8;
+      });
 
-    doc.save(`InvestSmart-Simulacao-${new Date().getTime()}.pdf`);
+      // Tabela de Dados
+      const tableHeaders = [['Mês', 'Investido', 'Juros (Mês)', 'Juros Acum.', 'Total Bruto', 'IR Devido', 'Total Líquido']];
+      const tableData = results.map(r => [
+        r.month.toString(),
+        formatCurrency(r.totalInvested),
+        formatCurrency(r.interest),
+        formatCurrency(r.totalInterest),
+        formatCurrency(r.totalAccumulated),
+        formatCurrency(r.taxPaid),
+        formatCurrency(r.netAccumulated)
+      ]);
+
+      autoTable(doc, {
+        startY: yPos + 10,
+        head: tableHeaders,
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [153, 27, 27], fontSize: 8 },
+        styles: { fontSize: 7, halign: 'center' },
+        columnStyles: {
+          0: { cellWidth: 10 },
+          4: { fontStyle: 'bold' },
+          6: { fontStyle: 'bold', textColor: [16, 185, 129] }
+        }
+      });
+
+      doc.save(`InvestSmart-Simulacao-${new Date().getTime()}.pdf`);
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Houve um erro ao gerar o PDF. Por favor, tente novamente.');
+    }
   };
 
   return (
